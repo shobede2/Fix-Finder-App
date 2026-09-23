@@ -36,26 +36,6 @@ To run Fix Finder, you will need:
 * A physical Android device or Android Emulator
 * Internet connection for features that use the REST API
 
-## Getting Started
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/YOUR-USERNAME/fix-finder.git
-```
-
-### 2. Open the project
-
-Open the cloned project in **Android Studio**.
-
-### 3. Sync the project
-
-Allow Android Studio to download and configure the required Gradle dependencies.
-
-### 4. Run the application
-
-Connect an Android device or start an Android Emulator, then select **Run ▶** in Android Studio.
-
 ##  Authentication
 
 Fix Finder includes a sign-in feature that allows users to access the application.
