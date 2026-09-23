@@ -17,7 +17,7 @@ The application provides a simple interface where users can access the available
 * Responsive Android user interface
 * Error handling and validation
 
-## 🛠️ Technologies Used
+## Technologies Used
 
 * **Android Studio**
 * **Kotlin**
