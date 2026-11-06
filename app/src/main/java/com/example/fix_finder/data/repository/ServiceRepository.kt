@@ -22,8 +22,9 @@ class ServiceRepository(
     private val context: Context? = null
 ) {
     private val gson = Gson()
-    private val db = context?.let { FixFinderDatabase.getInstance(it) }
-    private val networkObserver = context?.let { NetworkObserver(it) }
+    private val appContext = context?.applicationContext
+    private val db = appContext?.let { FixFinderDatabase.getInstance(it) }
+    private val networkObserver = appContext?.let { NetworkObserver(it) }
 
     suspend fun getCategories(): ResultState<List<ServiceCategory>> {
         return try {
@@ -33,7 +34,7 @@ class ServiceRepository(
             } else {
                 ResultState.Error("Failed to fetch service categories.")
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             ResultState.Error("Network error: ${e.localizedMessage ?: "Connection failed"}")
         }
     }
@@ -50,7 +51,7 @@ class ServiceRepository(
             } else {
                 ResultState.Error("Failed to fetch service providers.")
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             ResultState.Error("Network error: ${e.localizedMessage ?: "Connection failed"}")
         }
     }
@@ -63,7 +64,7 @@ class ServiceRepository(
             } else {
                 ResultState.Error("Service provider not found.")
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             ResultState.Error("Network error: ${e.localizedMessage ?: "Connection failed"}")
         }
     }
@@ -76,7 +77,7 @@ class ServiceRepository(
             return ResultState.Error("Please enter a valid service location.")
         }
 
-        val isOnline = networkObserver?.isOnline() ?: true
+        val isOnline = try { networkObserver?.isOnline() ?: true } catch (_: Throwable) { true }
 
         if (!isOnline) {
             // Save locally to Room database for offline sync
@@ -100,14 +101,18 @@ class ServiceRepository(
                 isSynced = false
             )
 
-            db?.reportDao()?.insertReport(LocalReportEntity.fromServiceRequest(offlineReq, isSynced = false))
+            try {
+                db?.reportDao()?.insertReport(LocalReportEntity.fromServiceRequest(offlineReq, isSynced = false))
+            } catch (_: Throwable) {}
 
-            context?.let {
-                NotificationHelper.showNotification(
-                    it,
-                    "Saved Offline (Pending Sync)",
-                    "Your report for ${request.serviceName} was saved locally. It will auto-sync when online."
-                )
+            appContext?.let {
+                try {
+                    NotificationHelper.showNotification(
+                        it,
+                        "Saved Offline (Pending Sync)",
+                        "Your report for ${request.serviceName} was saved locally. It will auto-sync when online."
+                    )
+                } catch (_: Throwable) {}
             }
 
             return ResultState.Success(offlineReq)
@@ -117,10 +122,14 @@ class ServiceRepository(
             val response = apiService.createServiceRequest(request)
             if (response.isSuccessful && response.body() != null) {
                 val createdReq = response.body()!!
-                db?.reportDao()?.insertReport(LocalReportEntity.fromServiceRequest(createdReq, isSynced = true))
+                try {
+                    db?.reportDao()?.insertReport(LocalReportEntity.fromServiceRequest(createdReq, isSynced = true))
+                } catch (_: Throwable) {}
 
-                context?.let {
-                    NotificationHelper.showReportSubmittedNotification(it, createdReq.id, createdReq.serviceName)
+                appContext?.let {
+                    try {
+                        NotificationHelper.showReportSubmittedNotification(it, createdReq.id, createdReq.serviceName)
+                    } catch (_: Throwable) {}
                 }
 
                 ResultState.Success(createdReq)
@@ -128,16 +137,20 @@ class ServiceRepository(
                 val errorMsg = parseErrorMessage(response.errorBody()?.string())
                 ResultState.Error(errorMsg ?: "Failed to submit service request.")
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             ResultState.Error("Network error: ${e.localizedMessage ?: "Connection failed"}")
         }
     }
 
     suspend fun getUserRequests(userId: String): ResultState<List<ServiceRequest>> {
-        val isOnline = networkObserver?.isOnline() ?: true
+        val isOnline = try { networkObserver?.isOnline() ?: true } catch (_: Throwable) { true }
 
         if (!isOnline) {
-            val localReports = db?.reportDao()?.getUserReports(userId)?.map { it.toServiceRequest() } ?: emptyList()
+            val localReports = try {
+                db?.reportDao()?.getUserReports(userId)?.map { it.toServiceRequest() } ?: emptyList()
+            } catch (_: Throwable) {
+                emptyList()
+            }
             return ResultState.Success(localReports)
         }
 
@@ -147,19 +160,33 @@ class ServiceRepository(
                 val remoteRequests = response.body()!!
 
                 // Cache remote requests in Room
-                db?.reportDao()?.insertAll(remoteRequests.map { LocalReportEntity.fromServiceRequest(it, isSynced = true) })
+                try {
+                    db?.reportDao()?.insertAll(remoteRequests.map { LocalReportEntity.fromServiceRequest(it, isSynced = true) })
+                } catch (_: Throwable) {}
 
                 // Include any unsynced local offline requests
-                val unsyncedLocal = db?.reportDao()?.getPendingUnsyncedReports()?.map { it.toServiceRequest() } ?: emptyList()
+                val unsyncedLocal = try {
+                    db?.reportDao()?.getPendingUnsyncedReports()?.map { it.toServiceRequest() } ?: emptyList()
+                } catch (_: Throwable) {
+                    emptyList()
+                }
                 val combined = unsyncedLocal + remoteRequests
 
                 ResultState.Success(combined)
             } else {
-                val cached = db?.reportDao()?.getUserReports(userId)?.map { it.toServiceRequest() } ?: emptyList()
+                val cached = try {
+                    db?.reportDao()?.getUserReports(userId)?.map { it.toServiceRequest() } ?: emptyList()
+                } catch (_: Throwable) {
+                    emptyList()
+                }
                 if (cached.isNotEmpty()) ResultState.Success(cached) else ResultState.Error("Failed to load service requests.")
             }
-        } catch (e: Exception) {
-            val cached = db?.reportDao()?.getUserReports(userId)?.map { it.toServiceRequest() } ?: emptyList()
+        } catch (e: Throwable) {
+            val cached = try {
+                db?.reportDao()?.getUserReports(userId)?.map { it.toServiceRequest() } ?: emptyList()
+            } catch (_: Throwable) {
+                emptyList()
+            }
             if (cached.isNotEmpty()) {
                 ResultState.Success(cached)
             } else {
@@ -169,7 +196,11 @@ class ServiceRepository(
     }
 
     suspend fun syncPendingOfflineReports(): Int {
-        val pending = db?.reportDao()?.getPendingUnsyncedReports() ?: return 0
+        val pending = try {
+            db?.reportDao()?.getPendingUnsyncedReports() ?: return 0
+        } catch (_: Throwable) {
+            return 0
+        }
         if (pending.isEmpty()) return 0
 
         var syncedCount = 0
@@ -192,17 +223,21 @@ class ServiceRepository(
                 val response = apiService.createServiceRequest(payload)
                 if (response.isSuccessful && response.body() != null) {
                     val syncedRemote = response.body()!!
-                    db.reportDao().deleteReport(localEntity.id)
-                    db.reportDao().insertReport(LocalReportEntity.fromServiceRequest(syncedRemote, isSynced = true))
+                    try {
+                        db.reportDao().deleteReport(localEntity.id)
+                        db.reportDao().insertReport(LocalReportEntity.fromServiceRequest(syncedRemote, isSynced = true))
+                    } catch (_: Throwable) {}
                     syncedCount++
                 }
-            } catch (e: Exception) {
+            } catch (_: Throwable) {
                 // Keep for next sync attempt
             }
         }
 
-        if (syncedCount > 0 && context != null) {
-            NotificationHelper.showSyncCompletedNotification(context, syncedCount)
+        if (syncedCount > 0 && appContext != null) {
+            try {
+                NotificationHelper.showSyncCompletedNotification(appContext, syncedCount)
+            } catch (_: Throwable) {}
         }
 
         return syncedCount
@@ -213,7 +248,7 @@ class ServiceRepository(
         return try {
             val map = gson.fromJson(errorBody, Map::class.java)
             (map["message"] ?: map["error"])?.toString()
-        } catch (e: Exception) {
+        } catch (_: Throwable) {
             null
         }
     }

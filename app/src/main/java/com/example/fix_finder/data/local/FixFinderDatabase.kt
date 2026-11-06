@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [LocalReportEntity::class], version = 1, exportSchema = false)
+@Database(entities = [LocalReportEntity::class], version = 2, exportSchema = false)
 abstract class FixFinderDatabase : RoomDatabase() {
 
     abstract fun reportDao(): ReportDao
@@ -14,15 +14,19 @@ abstract class FixFinderDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: FixFinderDatabase? = null
 
-        fun getInstance(context: Context): FixFinderDatabase {
+        fun getInstance(context: Context): FixFinderDatabase? {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    FixFinderDatabase::class.java,
-                    "fix_finder_db"
-                ).fallbackToDestructiveMigration().build()
-                INSTANCE = instance
-                instance
+                try {
+                    val instance = Room.databaseBuilder(
+                        context.applicationContext,
+                        FixFinderDatabase::class.java,
+                        "fix_finder_db"
+                    ).fallbackToDestructiveMigration().build()
+                    INSTANCE = instance
+                    instance
+                } catch (_: Throwable) {
+                    null
+                }
             }
         }
     }
