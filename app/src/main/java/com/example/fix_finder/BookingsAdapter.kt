@@ -7,13 +7,19 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import com.example.fix_finder.data.local.safeClick
 import com.example.fix_finder.data.model.ServiceRequest
+import com.google.android.material.button.MaterialButton
 
 class BookingsAdapter(
-    private var requests: List<ServiceRequest>
+    private var requests: List<ServiceRequest>,
+    private val isTechnicianView: Boolean = false,
+    private val onAcceptClick: ((ServiceRequest) -> Unit)? = null,
+    private val onDeclineClick: ((ServiceRequest) -> Unit)? = null
 ) : RecyclerView.Adapter<BookingsAdapter.BookingViewHolder>() {
 
     fun updateData(newRequests: List<ServiceRequest>) {
@@ -39,7 +45,7 @@ class BookingsAdapter(
 
     override fun onBindViewHolder(holder: BookingViewHolder, position: Int) {
         try {
-            holder.bind(requests[position])
+            holder.bind(requests[position], isTechnicianView, onAcceptClick, onDeclineClick)
         } catch (_: Throwable) {
             // Safe fallback preventing adapter crashes
         }
@@ -59,7 +65,16 @@ class BookingsAdapter(
         private val tvEstimatedPrice: TextView? = itemView.findViewById(R.id.tvEstimatedPrice)
         private val imgAttachedPhoto: ImageView? = itemView.findViewById(R.id.imgAttachedPhoto)
 
-        fun bind(request: ServiceRequest) {
+        private val layoutTechActions: LinearLayout? = itemView.findViewById(R.id.layoutTechActions)
+        private val btnAcceptJob: MaterialButton? = itemView.findViewById(R.id.btnAcceptJob)
+        private val btnDeclineJob: MaterialButton? = itemView.findViewById(R.id.btnDeclineJob)
+
+        fun bind(
+            request: ServiceRequest,
+            isTechnicianView: Boolean,
+            onAcceptClick: ((ServiceRequest) -> Unit)?,
+            onDeclineClick: ((ServiceRequest) -> Unit)?
+        ) {
             tvRequestId?.text = "#${request.id}"
             tvServiceName?.text = request.serviceName
             tvProviderName?.text = "Technician: ${request.providerName} (${request.providerCategory})"
@@ -117,6 +132,25 @@ class BookingsAdapter(
                         tvStatusBadge.setTextColor(Color.parseColor("#B45309"))
                     }
                 }
+            }
+
+            // Technician Actions Row
+            if (isTechnicianView && layoutTechActions != null) {
+                layoutTechActions.visibility = View.VISIBLE
+                if (request.status == ServiceRequest.STATUS_PENDING) {
+                    btnAcceptJob?.text = "Accept Job"
+                    btnDeclineJob?.visibility = View.VISIBLE
+                } else if (request.status == ServiceRequest.STATUS_ACCEPTED) {
+                    btnAcceptJob?.text = "Mark Completed"
+                    btnDeclineJob?.visibility = View.GONE
+                } else {
+                    layoutTechActions.visibility = View.GONE
+                }
+
+                btnAcceptJob?.safeClick { onAcceptClick?.invoke(request) }
+                btnDeclineJob?.safeClick { onDeclineClick?.invoke(request) }
+            } else {
+                layoutTechActions?.visibility = View.GONE
             }
         }
     }
