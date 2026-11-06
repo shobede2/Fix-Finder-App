@@ -14,9 +14,6 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
-import androidx.credentials.exceptions.GetCredentialException
-import androidx.credentials.exceptions.GetCredentialProviderConfigurationException
-import androidx.credentials.exceptions.NoCredentialException
 import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -27,12 +24,10 @@ import com.example.fix_finder.data.model.User
 import com.example.fix_finder.data.repository.AuthRepository
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -112,8 +107,7 @@ class LoginFragment : Fragment() {
 
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
-                    val result = authRepository.login(email, password)
-                    when (result) {
+                    when (val result = authRepository.login(email, password)) {
                         is AuthResult.Success -> {
                             Toast.makeText(context, "Welcome back, ${result.user.name}!", Toast.LENGTH_SHORT).show()
                             navigateToDestination(result.user)
@@ -212,7 +206,7 @@ class LoginFragment : Fragment() {
                     showGoogleEmailPromptDialog(sessionManager)
                 }
 
-            } catch (e: GetCredentialCancellationException) {
+            } catch (_: GetCredentialCancellationException) {
                 Log.d(TAG, "Google Sign-In cancelled by user.")
                 Toast.makeText(context, getString(R.string.google_sign_in_cancelled), Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
