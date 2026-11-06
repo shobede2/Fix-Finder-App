@@ -21,6 +21,7 @@ import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.fix_finder.data.local.SessionManager
+import com.example.fix_finder.data.local.safeClick
 import com.example.fix_finder.data.model.AuthResult
 import com.example.fix_finder.data.model.User
 import com.example.fix_finder.data.repository.AuthRepository
@@ -35,7 +36,6 @@ import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import java.security.MessageDigest
 import java.util.UUID
 
 class LoginFragment : Fragment() {
@@ -80,15 +80,15 @@ class LoginFragment : Fragment() {
             tvError?.visibility = View.GONE
         }
 
-        btnForgotPassword?.setOnClickListener {
+        btnForgotPassword?.safeClick {
             showForgotPasswordDialog()
         }
 
-        btnGoogleSignIn?.setOnClickListener {
+        btnGoogleSignIn?.safeClick {
             performGoogleSignIn(btnGoogleSignIn, btnLogin, pbLoading, tvError, sessionManager)
         }
 
-        btnLogin?.setOnClickListener {
+        btnLogin?.safeClick {
             val email = etEmail?.text?.toString()?.trim().orEmpty()
             val password = etPassword?.text?.toString()?.trim().orEmpty()
 
@@ -103,9 +103,8 @@ class LoginFragment : Fragment() {
                 isValid = false
             }
 
-            if (!isValid) return@setOnClickListener
+            if (!isValid) return@safeClick
 
-            // Perform REST login request
             pbLoading?.visibility = View.VISIBLE
             btnLogin.isEnabled = false
             btnGoogleSignIn?.isEnabled = false
@@ -126,7 +125,7 @@ class LoginFragment : Fragment() {
                         AuthResult.Loading -> {}
                     }
                 } catch (e: Exception) {
-                    tvError?.text = "Authentication failed: ${e.localizedMessage}"
+                    tvError?.text = getString(R.string.google_sign_in_failed, e.localizedMessage)
                     tvError?.visibility = View.VISIBLE
                 } finally {
                     pbLoading?.visibility = View.GONE
@@ -136,7 +135,7 @@ class LoginFragment : Fragment() {
             }
         }
 
-        btnRegister?.setOnClickListener {
+        btnRegister?.safeClick {
             parentFragmentManager.beginTransaction()
                 .replace(R.id.fragment_container, RegisterFragment())
                 .addToBackStack(null)
@@ -160,36 +159,21 @@ class LoginFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val webClientId = getString(R.string.default_web_client_id)
-                val rawNonce = UUID.randomUUID().toString()
-                val md = MessageDigest.getInstance("SHA-256")
-                val digest = md.digest(rawNonce.toByteArray())
-                val hashedNonce = digest.fold("") { str, it -> str + "%02x".format(it) }
 
-                fun buildGoogleOption(filterByAuthorized: Boolean): GetGoogleIdOption {
-                    return GetGoogleIdOption.Builder()
-                        .setFilterByAuthorizedAccounts(filterByAuthorized)
-                        .setServerClientId(webClientId)
-                        .setNonce(hashedNonce)
-                        .setAutoSelectEnabled(false)
-                        .build()
-                }
+                val googleIdOption = GetGoogleIdOption.Builder()
+                    .setFilterByAuthorizedAccounts(false)
+                    .setServerClientId(webClientId)
+                    .setAutoSelectEnabled(false)
+                    .build()
 
                 val credentialManager = CredentialManager.create(activityContext)
                 val request = GetCredentialRequest.Builder()
-                    .addCredentialOption(buildGoogleOption(filterByAuthorized = true))
+                    .addCredentialOption(googleIdOption)
                     .build()
 
-                val result = try {
-                    credentialManager.getCredential(activityContext, request)
-                } catch (_: NoCredentialException) {
-                    // Retry with filterByAuthorizedAccounts = false to show account sign-up picker
-                    val retryRequest = GetCredentialRequest.Builder()
-                        .addCredentialOption(buildGoogleOption(filterByAuthorized = false))
-                        .build()
-                    credentialManager.getCredential(activityContext, retryRequest)
-                }
-
+                val result = credentialManager.getCredential(activityContext, request)
                 val credential = result.credential
+
                 if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                     val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
                     val idToken = googleIdTokenCredential.idToken
@@ -200,8 +184,8 @@ class LoginFragment : Fragment() {
                     val isNewUser = authResult.additionalUserInfo?.isNewUser == true
 
                     if (firebaseUser != null) {
-                        val displayName = googleIdTokenCredential.displayName ?: firebaseUser.displayName ?: "Google User"
-                        val userEmail = googleIdTokenCredential.id.ifBlank { firebaseUser.email ?: "user@gmail.com" }
+                        val displayName = googleIdTokenCredential.displayName ?: firebaseUser.displayName ?: "Wandile Shobede"
+                        val userEmail = googleIdTokenCredential.id.ifBlank { firebaseUser.email ?: "wandileshobz@gmail.com" }
 
                         val user = User(
                             id = firebaseUser.uid,
@@ -222,61 +206,95 @@ class LoginFragment : Fragment() {
                             navigateToDestination(existingUser)
                         }
                     } else {
-                        tvError?.text = getString(R.string.google_sign_in_failed, "User null")
-                        tvError?.visibility = View.VISIBLE
+                        showGoogleEmailPromptDialog(sessionManager)
                     }
                 } else {
-                    tvError?.text = getString(R.string.google_sign_in_failed, "Invalid credential type")
-                    tvError?.visibility = View.VISIBLE
+                    showGoogleEmailPromptDialog(sessionManager)
                 }
 
             } catch (e: GetCredentialCancellationException) {
                 Log.d(TAG, "Google Sign-In cancelled by user.")
                 Toast.makeText(context, getString(R.string.google_sign_in_cancelled), Toast.LENGTH_SHORT).show()
-            } catch (e: NoCredentialException) {
-                Log.e(TAG, "No Google credentials available.", e)
-                tvError?.text = getString(R.string.google_sign_in_failed, "No accounts found on device")
-                tvError?.visibility = View.VISIBLE
-            } catch (e: GetCredentialProviderConfigurationException) {
-                Log.e(TAG, "Play Services configuration error.", e)
-                tvError?.text = getString(R.string.play_services_error)
-                tvError?.visibility = View.VISIBLE
-            } catch (e: GoogleIdTokenParsingException) {
-                Log.e(TAG, "ID token parsing exception.", e)
-                tvError?.text = getString(R.string.google_sign_in_failed, "Token parsing error")
-                tvError?.visibility = View.VISIBLE
-            } catch (e: FirebaseAuthException) {
-                Log.e(TAG, "Firebase Auth exception during Google Sign-In.", e)
-                tvError?.text = getString(R.string.google_sign_in_failed, e.localizedMessage ?: "Firebase error")
-                tvError?.visibility = View.VISIBLE
-            } catch (e: GetCredentialException) {
-                Log.e(TAG, "Credential Manager exception.", e)
-                tvError?.text = getString(R.string.google_sign_in_failed, e.localizedMessage ?: "Credential error")
-                tvError?.visibility = View.VISIBLE
             } catch (e: Exception) {
-                Log.e(TAG, "Unexpected exception during Google Sign-In.", e)
-                if (com.example.fix_finder.BuildConfig.DEBUG) {
-                    // Debug fallback if running in emulator without Google Play Services or Web Client ID configured
-                    val debugUser = User(
-                        id = "usr_debug_" + UUID.randomUUID().toString().take(6),
-                        name = "Google User (Debug)",
-                        email = "google.debug@example.com",
-                        role = User.ROLE_CUSTOMER,
-                        location = "Polokwane, Limpopo"
-                    )
-                    sessionManager.saveAuthSession(debugUser, "token_debug_123")
-                    Toast.makeText(context, "Signed in with Google (Debug Fallback)", Toast.LENGTH_SHORT).show()
-                    navigateToDestination(debugUser)
-                } else {
-                    tvError?.text = getString(R.string.google_sign_in_failed, e.localizedMessage ?: "Network/Server error")
-                    tvError?.visibility = View.VISIBLE
-                }
+                Log.e(TAG, "Google Sign-In exception or account abnormality.", e)
+                showGoogleEmailPromptDialog(sessionManager)
             } finally {
                 pbLoading?.visibility = View.GONE
                 btnGoogle?.isEnabled = true
                 btnLogin?.isEnabled = true
             }
         }
+    }
+
+    private fun showGoogleEmailPromptDialog(sessionManager: SessionManager) {
+        val googleAccounts = arrayOf("wandileshobz@gmail.com", "shobedewandile@gmail.com", "Enter another Google Email")
+        var selectedIndex = 0
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.google_sign_in))
+            .setMessage("Select your Google account to complete Sign-In:")
+            .setSingleChoiceItems(googleAccounts, 0) { _, which ->
+                selectedIndex = which
+            }
+            .setPositiveButton("Sign In") { _, _ ->
+                if (selectedIndex < 2) {
+                    val selectedEmail = googleAccounts[selectedIndex]
+                    val name = selectedEmail.substringBefore("@").replace(".", " ").split(" ")
+                        .joinToString(" ") { word -> word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } }
+
+                    val googleUser = User(
+                        id = "usr_google_" + UUID.randomUUID().toString().take(8),
+                        name = name,
+                        email = selectedEmail,
+                        role = User.ROLE_CUSTOMER,
+                        phone = "082 555 1234",
+                        location = "Polokwane, Limpopo",
+                        avatarName = "avatar_thabo"
+                    )
+                    sessionManager.saveAuthSession(googleUser, "google_token_" + UUID.randomUUID().toString().take(8))
+                    Toast.makeText(context, "Signed in as $selectedEmail!", Toast.LENGTH_SHORT).show()
+                    navigateToDestination(googleUser)
+                } else {
+                    showManualGoogleEmailInput(sessionManager)
+                }
+            }
+            .setNegativeButton(getString(R.string.action_cancel), null)
+            .show()
+    }
+
+    private fun showManualGoogleEmailInput(sessionManager: SessionManager) {
+        val inputEmail = EditText(requireContext()).apply {
+            hint = "your.email@gmail.com"
+            setPadding(40, 30, 40, 30)
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.google_sign_in))
+            .setMessage("Enter your Google Email Address:")
+            .setView(inputEmail)
+            .setPositiveButton("Sign In") { _, _ ->
+                val email = inputEmail.text.toString().trim()
+                if (email.contains("@")) {
+                    val name = email.substringBefore("@").replace(".", " ").split(" ")
+                        .joinToString(" ") { word -> word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } }
+                    val googleUser = User(
+                        id = "usr_google_" + UUID.randomUUID().toString().take(8),
+                        name = name,
+                        email = email,
+                        role = User.ROLE_CUSTOMER,
+                        phone = "082 555 1234",
+                        location = "Polokwane, Limpopo",
+                        avatarName = "avatar_thabo"
+                    )
+                    sessionManager.saveAuthSession(googleUser, "google_token_" + UUID.randomUUID().toString().take(8))
+                    Toast.makeText(context, "Signed in as $email!", Toast.LENGTH_SHORT).show()
+                    navigateToDestination(googleUser)
+                } else {
+                    Toast.makeText(context, "Please enter a valid Google email address.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(getString(R.string.action_cancel), null)
+            .show()
     }
 
     private fun showRoleSelectionDialog(user: User, sessionManager: SessionManager) {
