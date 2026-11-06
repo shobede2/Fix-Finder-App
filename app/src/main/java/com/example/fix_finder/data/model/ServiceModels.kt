@@ -56,7 +56,9 @@ data class ServiceRequest(
     val time: String,
     val estimatedPrice: String,
     val status: String = STATUS_PENDING, // PENDING, ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED
-    val createdAt: String
+    val createdAt: String,
+    val imageUrl: String? = null,
+    val isSynced: Boolean = true
 ) {
     companion object {
         const val STATUS_PENDING = "PENDING"
@@ -78,7 +80,8 @@ data class ServiceRequestCreate(
     val address: String,
     val date: String,
     val time: String,
-    val estimatedPrice: String
+    val estimatedPrice: String,
+    val imageUrl: String? = null
 )
 
 data class UserSettings(
@@ -87,7 +90,8 @@ data class UserSettings(
     val emailAlerts: Boolean = true,
     val smsAlerts: Boolean = false,
     val preferredLocation: String = "Polokwane, Limpopo",
-    val themeMode: String = THEME_SYSTEM // "SYSTEM", "LIGHT", "DARK"
+    val themeMode: String = THEME_SYSTEM, // "SYSTEM", "LIGHT", "DARK"
+    val preferredLanguage: String = "en" // "en" (English), "zu" (isiZulu)
 ) {
     companion object {
         const val THEME_SYSTEM = "SYSTEM"

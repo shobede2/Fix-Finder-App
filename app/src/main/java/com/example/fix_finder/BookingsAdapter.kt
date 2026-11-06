@@ -2,9 +2,11 @@ package com.example.fix_finder
 
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
@@ -36,52 +38,84 @@ class BookingsAdapter(
     }
 
     override fun onBindViewHolder(holder: BookingViewHolder, position: Int) {
-        holder.bind(requests[position])
+        try {
+            holder.bind(requests[position])
+        } catch (_: Throwable) {
+            // Safe fallback preventing adapter crashes
+        }
     }
 
     override fun getItemCount(): Int = requests.size
 
     class BookingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val tvRequestId: TextView = itemView.findViewById(R.id.tvRequestId)
-        private val tvStatusBadge: TextView = itemView.findViewById(R.id.tvStatusBadge)
-        private val tvServiceName: TextView = itemView.findViewById(R.id.tvServiceName)
-        private val tvProviderName: TextView = itemView.findViewById(R.id.tvProviderName)
-        private val tvDescription: TextView = itemView.findViewById(R.id.tvDescription)
-        private val tvDateTime: TextView = itemView.findViewById(R.id.tvDateTime)
-        private val tvAddress: TextView = itemView.findViewById(R.id.tvAddress)
-        private val tvEstimatedPrice: TextView = itemView.findViewById(R.id.tvEstimatedPrice)
+        private val tvRequestId: TextView? = itemView.findViewById(R.id.tvRequestId)
+        private val tvSyncBadge: TextView? = itemView.findViewById(R.id.tvSyncBadge)
+        private val tvStatusBadge: TextView? = itemView.findViewById(R.id.tvStatusBadge)
+        private val tvServiceName: TextView? = itemView.findViewById(R.id.tvServiceName)
+        private val tvProviderName: TextView? = itemView.findViewById(R.id.tvProviderName)
+        private val tvDescription: TextView? = itemView.findViewById(R.id.tvDescription)
+        private val tvDateTime: TextView? = itemView.findViewById(R.id.tvDateTime)
+        private val tvAddress: TextView? = itemView.findViewById(R.id.tvAddress)
+        private val tvEstimatedPrice: TextView? = itemView.findViewById(R.id.tvEstimatedPrice)
+        private val imgAttachedPhoto: ImageView? = itemView.findViewById(R.id.imgAttachedPhoto)
 
         fun bind(request: ServiceRequest) {
-            tvRequestId.text = "#${request.id}"
-            tvServiceName.text = request.serviceName
-            tvProviderName.text = "Technician: ${request.providerName} (${request.providerCategory})"
-            tvDescription.text = request.description
-            tvDateTime.text = "📅 ${request.date} at ${request.time}"
-            tvAddress.text = "📍 ${request.address}"
-            tvEstimatedPrice.text = request.estimatedPrice
+            tvRequestId?.text = "#${request.id}"
+            tvServiceName?.text = request.serviceName
+            tvProviderName?.text = "Technician: ${request.providerName} (${request.providerCategory})"
+            tvDescription?.text = request.description
+            tvDateTime?.text = "📅 ${request.date} at ${request.time}"
+            tvAddress?.text = "📍 ${request.address}"
+            tvEstimatedPrice?.text = request.estimatedPrice
+
+            // Offline Sync Badge
+            tvSyncBadge?.visibility = if (!request.isSynced) View.VISIBLE else View.GONE
+
+            // Photo Attachment (Safely validated to prevent SecurityException/NPE)
+            val imgUrl = request.imageUrl
+            if (!imgUrl.isNullOrEmpty() && imgAttachedPhoto != null) {
+                try {
+                    val uri = Uri.parse(imgUrl)
+                    val cr = itemView.context.applicationContext.contentResolver
+                    val pfd = cr.openFileDescriptor(uri, "r")
+                    if (pfd != null) {
+                        pfd.close()
+                        imgAttachedPhoto.setImageURI(uri)
+                        imgAttachedPhoto.visibility = View.VISIBLE
+                    } else {
+                        imgAttachedPhoto.visibility = View.GONE
+                    }
+                } catch (_: Throwable) {
+                    imgAttachedPhoto.visibility = View.GONE
+                }
+            } else {
+                imgAttachedPhoto?.visibility = View.GONE
+            }
 
             // Status Badge Formatting
-            tvStatusBadge.text = request.status
-            when (request.status) {
-                ServiceRequest.STATUS_ACCEPTED -> {
-                    tvStatusBadge.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#DCFCE7"))
-                    tvStatusBadge.setTextColor(Color.parseColor("#15803D"))
-                }
-                ServiceRequest.STATUS_IN_PROGRESS -> {
-                    tvStatusBadge.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#DBEAFE"))
-                    tvStatusBadge.setTextColor(Color.parseColor("#1D4ED8"))
-                }
-                ServiceRequest.STATUS_COMPLETED -> {
-                    tvStatusBadge.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#E0E7FF"))
-                    tvStatusBadge.setTextColor(Color.parseColor("#4338CA"))
-                }
-                ServiceRequest.STATUS_CANCELLED -> {
-                    tvStatusBadge.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FEE2E2"))
-                    tvStatusBadge.setTextColor(Color.parseColor("#B91C1C"))
-                }
-                else -> { // PENDING
-                    tvStatusBadge.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FEF3C7"))
-                    tvStatusBadge.setTextColor(Color.parseColor("#B45309"))
+            if (tvStatusBadge != null) {
+                tvStatusBadge.text = request.status
+                when (request.status) {
+                    ServiceRequest.STATUS_ACCEPTED -> {
+                        tvStatusBadge.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#DCFCE7"))
+                        tvStatusBadge.setTextColor(Color.parseColor("#15803D"))
+                    }
+                    ServiceRequest.STATUS_IN_PROGRESS -> {
+                        tvStatusBadge.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#DBEAFE"))
+                        tvStatusBadge.setTextColor(Color.parseColor("#1D4ED8"))
+                    }
+                    ServiceRequest.STATUS_COMPLETED -> {
+                        tvStatusBadge.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#E0E7FF"))
+                        tvStatusBadge.setTextColor(Color.parseColor("#4338CA"))
+                    }
+                    ServiceRequest.STATUS_CANCELLED -> {
+                        tvStatusBadge.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FEE2E2"))
+                        tvStatusBadge.setTextColor(Color.parseColor("#B91C1C"))
+                    }
+                    else -> { // PENDING
+                        tvStatusBadge.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FEF3C7"))
+                        tvStatusBadge.setTextColor(Color.parseColor("#B45309"))
+                    }
                 }
             }
         }

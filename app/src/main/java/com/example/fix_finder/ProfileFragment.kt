@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.fix_finder.data.model.ServiceProvider
+import com.example.fix_finder.data.repository.ChatRepository
 import com.example.fix_finder.data.repository.ResultState
 import com.example.fix_finder.data.repository.ServiceRepository
 import com.google.android.material.button.MaterialButton
@@ -62,15 +63,31 @@ class ProfileFragment : Fragment() {
             Toast.makeText(context, "Sharing technician profile link...", Toast.LENGTH_SHORT).show()
         }
 
-        val openBooking = View.OnClickListener {
+        btnBookNow?.setOnClickListener {
             parentFragmentManager.beginTransaction()
                 .replace(R.id.fragment_container, ServiceRequestFragment.newInstance(providerId))
                 .addToBackStack(null)
                 .commit()
         }
 
-        btnBookNow?.setOnClickListener(openBooking)
-        btnRequestQuote?.setOnClickListener(openBooking)
+        btnRequestQuote?.setOnClickListener {
+            lifecycleScope.launch {
+                when (val result = serviceRepository.getProviderById(providerId)) {
+                    is ResultState.Success -> {
+                        val provider = result.data
+                        val conv = ChatRepository.getOrCreateConversation(provider)
+                        parentFragmentManager.beginTransaction()
+                            .replace(R.id.fragment_container, ChatDetailFragment.newInstance(conv.id, conv.providerName, conv.providerCategory, conv.avatarName))
+                            .addToBackStack(null)
+                            .commit()
+                    }
+                    is ResultState.Error -> {
+                        Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
+                    }
+                    ResultState.Loading -> {}
+                }
+            }
+        }
 
         // Fetch Provider Details from API
         lifecycleScope.launch {

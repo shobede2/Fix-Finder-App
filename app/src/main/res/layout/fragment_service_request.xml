@@ -259,6 +259,36 @@
                         </com.google.android.material.textfield.TextInputLayout>
                     </LinearLayout>
 
+                    <!-- Photo Attachment Section -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginBottom="16dp">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnAttachPhoto"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:text="@string/attach_photo"
+                            android:textColor="@color/primary_navy"
+                            app:icon="@drawable/ic_share"
+                            app:iconGravity="textStart"
+                            app:strokeColor="@color/border_light"
+                            app:cornerRadius="10dp" />
+
+                        <ImageView
+                            android:id="@+id/imgReportPreview"
+                            android:layout_width="match_parent"
+                            android:layout_height="140dp"
+                            android:layout_marginTop="8dp"
+                            android:scaleType="centerCrop"
+                            android:background="@drawable/bg_rounded_box"
+                            android:visibility="gone"
+                            android:contentDescription="Report Attachment Preview" />
+                    </LinearLayout>
+
                     <!-- Price Estimate Banner -->
                     <LinearLayout
                         android:layout_width="match_parent"

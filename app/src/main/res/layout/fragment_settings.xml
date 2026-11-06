@@ -240,7 +240,52 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Section 4: Theme Preferences -->
+            <!-- Section 4: Language Selection -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="@string/language_selection"
+                android:textColor="@color/primary_navy"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="1dp"
+                app:cardBackgroundColor="@color/white">
+
+                <RadioGroup
+                    android:id="@+id/rgLanguage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp">
+
+                    <RadioButton
+                        android:id="@+id/rbLangEnglish"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:padding="8dp"
+                        android:text="@string/lang_english"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp" />
+
+                    <RadioButton
+                        android:id="@+id/rbLangIsizulu"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="8dp"
+                        android:text="@string/lang_isizulu"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp" />
+                </RadioGroup>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Section 5: Theme Preferences -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -309,7 +354,9 @@
         android:id="@+id/bottomNavigation"
         android:layout_width="match_parent"
         android:layout_height="72dp"
-        android:background="@color/white"
+        android:layout_marginHorizontal="12dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/bg_rounded_box"
         app:elevation="8dp"
         app:menu="@menu/customer_bottom_menu"
         app:itemIconTint="@color/primary_navy"

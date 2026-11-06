@@ -75,9 +75,16 @@ class HomeFragment : Fragment() {
                     navigateToSearch(null)
                     true
                 }
-                R.id.nav_bookings, R.id.nav_messages -> {
+                R.id.nav_bookings -> {
                     parentFragmentManager.beginTransaction()
                         .replace(R.id.fragment_container, BookingsFragment())
+                        .addToBackStack(null)
+                        .commit()
+                    true
+                }
+                R.id.nav_messages -> {
+                    parentFragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container, MessagesFragment())
                         .addToBackStack(null)
                         .commit()
                     true

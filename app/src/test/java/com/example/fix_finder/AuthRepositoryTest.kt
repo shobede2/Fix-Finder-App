@@ -1,5 +1,6 @@
 package com.example.fix_finder
 
+import android.content.Context
 import android.content.ContextWrapper
 import android.content.SharedPreferences
 import com.example.fix_finder.data.api.FixFinderApiService
@@ -138,7 +139,7 @@ class AuthRepositoryTest {
 
         override fun isLoggedIn(): Boolean = loggedInState
         override fun getUser(): User? = userState
-        override fun logout() {
+        override fun logout(context: Context?) {
             loggedInState = false
             tokenState = null
             userState = null

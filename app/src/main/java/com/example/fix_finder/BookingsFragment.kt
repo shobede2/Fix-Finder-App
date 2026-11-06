@@ -1,6 +1,7 @@
 package com.example.fix_finder
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,6 +11,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.fix_finder.data.api.ApiClient
 import com.example.fix_finder.data.local.SessionManager
 import com.example.fix_finder.data.repository.ResultState
 import com.example.fix_finder.data.repository.ServiceRepository
@@ -22,6 +24,10 @@ class BookingsFragment : Fragment() {
     private lateinit var sessionManager: SessionManager
     private lateinit var bookingsAdapter: BookingsAdapter
 
+    companion object {
+        private const val TAG = "BookingsFragment"
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -32,8 +38,9 @@ class BookingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        serviceRepository = ServiceRepository()
-        sessionManager = SessionManager.getInstance(requireContext())
+        val safeContext = context?.applicationContext ?: return
+        serviceRepository = ServiceRepository(ApiClient.apiService, safeContext)
+        sessionManager = SessionManager.getInstance(safeContext)
 
         val pbBookings = view.findViewById<ProgressBar>(R.id.pbBookings)
         val layoutEmpty = view.findViewById<LinearLayout>(R.id.layoutEmptyBookings)
@@ -60,7 +67,13 @@ class BookingsFragment : Fragment() {
                         .commit()
                     true
                 }
-                R.id.nav_bookings, R.id.nav_messages -> true
+                R.id.nav_bookings -> true
+                R.id.nav_messages -> {
+                    parentFragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container, MessagesFragment())
+                        .commit()
+                    true
+                }
                 R.id.nav_profile -> {
                     parentFragmentManager.beginTransaction()
                         .replace(R.id.fragment_container, SettingsFragment())
@@ -78,26 +91,44 @@ class BookingsFragment : Fragment() {
         pbBookings?.visibility = View.VISIBLE
         layoutEmpty?.visibility = View.GONE
 
-        lifecycleScope.launch {
-            when (val result = serviceRepository.getUserRequests(userId)) {
-                is ResultState.Success -> {
-                    pbBookings?.visibility = View.GONE
-                    val requests = result.data
-                    if (requests.isEmpty()) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // Background sync check for offline created requests
+                try {
+                    serviceRepository.syncPendingOfflineReports()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Offline sync check failed", e)
+                }
+
+                when (val result = serviceRepository.getUserRequests(userId)) {
+                    is ResultState.Success -> {
+                        if (!isAdded) return@launch
+                        pbBookings?.visibility = View.GONE
+                        val requests = result.data
+                        if (requests.isEmpty()) {
+                            layoutEmpty?.visibility = View.VISIBLE
+                            rvBookings?.visibility = View.GONE
+                        } else {
+                            layoutEmpty?.visibility = View.GONE
+                            rvBookings?.visibility = View.VISIBLE
+                            bookingsAdapter.updateData(requests)
+                        }
+                    }
+                    is ResultState.Error -> {
+                        if (!isAdded) return@launch
+                        pbBookings?.visibility = View.GONE
                         layoutEmpty?.visibility = View.VISIBLE
                         rvBookings?.visibility = View.GONE
-                    } else {
-                        layoutEmpty?.visibility = View.GONE
-                        rvBookings?.visibility = View.VISIBLE
-                        bookingsAdapter.updateData(requests)
                     }
+                    ResultState.Loading -> {}
                 }
-                is ResultState.Error -> {
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load bookings", e)
+                if (isAdded) {
                     pbBookings?.visibility = View.GONE
                     layoutEmpty?.visibility = View.VISIBLE
                     rvBookings?.visibility = View.GONE
                 }
-                ResultState.Loading -> {}
             }
         }
     }

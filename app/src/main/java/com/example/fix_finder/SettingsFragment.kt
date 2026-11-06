@@ -11,6 +11,7 @@ import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
+import com.example.fix_finder.data.local.LocaleHelper
 import com.example.fix_finder.data.local.SessionManager
 import com.example.fix_finder.data.model.User
 import com.example.fix_finder.data.model.UserSettings
@@ -50,6 +51,11 @@ class SettingsFragment : Fragment() {
         val switchSms = view.findViewById<SwitchCompat>(R.id.switchSms)
 
         val spLocation = view.findViewById<Spinner>(R.id.spLocation)
+
+        val rgLanguage = view.findViewById<RadioGroup>(R.id.rgLanguage)
+        val rbLangEnglish = view.findViewById<RadioButton>(R.id.rbLangEnglish)
+        val rbLangIsizulu = view.findViewById<RadioButton>(R.id.rbLangIsizulu)
+
         val rgTheme = view.findViewById<RadioGroup>(R.id.rgTheme)
         val rbThemeSystem = view.findViewById<RadioButton>(R.id.rbThemeSystem)
         val rbThemeLight = view.findViewById<RadioButton>(R.id.rbThemeLight)
@@ -102,6 +108,12 @@ class SettingsFragment : Fragment() {
         val locationIndex = locations.indexOf(currentSettings.preferredLocation).coerceAtLeast(0)
         spLocation?.setSelection(locationIndex)
 
+        if (currentSettings.preferredLanguage == LocaleHelper.LANG_ISIZULU) {
+            rbLangIsizulu?.isChecked = true
+        } else {
+            rbLangEnglish?.isChecked = true
+        }
+
         when (currentSettings.themeMode) {
             UserSettings.THEME_LIGHT -> rbThemeLight?.isChecked = true
             UserSettings.THEME_DARK -> rbThemeDark?.isChecked = true
@@ -116,6 +128,12 @@ class SettingsFragment : Fragment() {
                 else -> UserSettings.THEME_SYSTEM
             }
 
+            val newLang = if (rgLanguage?.checkedRadioButtonId == R.id.rbLangIsizulu) {
+                LocaleHelper.LANG_ISIZULU
+            } else {
+                LocaleHelper.LANG_ENGLISH
+            }
+
             MainActivity.applyTheme(themeMode)
 
             val newSettings = UserSettings(
@@ -124,8 +142,13 @@ class SettingsFragment : Fragment() {
                 emailAlerts = switchEmail?.isChecked ?: true,
                 smsAlerts = switchSms?.isChecked ?: false,
                 preferredLocation = spLocation?.selectedItem?.toString() ?: locations[0],
-                themeMode = themeMode
+                themeMode = themeMode,
+                preferredLanguage = newLang
             )
+
+            if (currentSettings.preferredLanguage != newLang) {
+                LocaleHelper.setLocale(requireContext(), newLang)
+            }
 
             lifecycleScope.launch {
                 settingsRepository.saveSettings(newSettings)
@@ -135,6 +158,10 @@ class SettingsFragment : Fragment() {
         switchPush?.setOnCheckedChangeListener { _, _ -> saveAction() }
         switchEmail?.setOnCheckedChangeListener { _, _ -> saveAction() }
         switchSms?.setOnCheckedChangeListener { _, _ -> saveAction() }
+        rgLanguage?.setOnCheckedChangeListener { _, _ ->
+            saveAction()
+            activity?.recreate()
+        }
         rgTheme?.setOnCheckedChangeListener { _, _ -> saveAction() }
 
         // Logout handling
@@ -196,9 +223,15 @@ class SettingsFragment : Fragment() {
                             .commit()
                         true
                     }
-                    R.id.nav_bookings, R.id.nav_messages -> {
+                    R.id.nav_bookings -> {
                         parentFragmentManager.beginTransaction()
                             .replace(R.id.fragment_container, BookingsFragment())
+                            .commit()
+                        true
+                    }
+                    R.id.nav_messages -> {
+                        parentFragmentManager.beginTransaction()
+                            .replace(R.id.fragment_container, MessagesFragment())
                             .commit()
                         true
                     }

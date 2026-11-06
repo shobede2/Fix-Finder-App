@@ -2,19 +2,22 @@ package com.example.fix_finder
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.example.fix_finder.data.api.ApiClient
 import com.example.fix_finder.data.local.SessionManager
-import com.example.fix_finder.data.repository.ResultState
 import com.example.fix_finder.data.model.ServiceProvider
 import com.example.fix_finder.data.model.ServiceRequestCreate
+import com.example.fix_finder.data.repository.ResultState
 import com.example.fix_finder.data.repository.ServiceRepository
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
@@ -30,8 +33,20 @@ class ServiceRequestFragment : Fragment() {
 
     private var providerId: String = "tech_1"
     private var currentProvider: ServiceProvider? = null
+    private var selectedImageUriString: String? = null
 
     private val calendar = Calendar.getInstance()
+
+    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) {
+            selectedImageUriString = uri.toString()
+            view?.findViewById<ImageView>(R.id.imgReportPreview)?.apply {
+                setImageURI(uri)
+                visibility = View.VISIBLE
+            }
+            view?.findViewById<MaterialButton>(R.id.btnAttachPhoto)?.text = getString(R.string.photo_attached)
+        }
+    }
 
     companion object {
         private const val ARG_PROVIDER_ID = "provider_id"
@@ -60,8 +75,13 @@ class ServiceRequestFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        serviceRepository = ServiceRepository()
+        serviceRepository = ServiceRepository(ApiClient.apiService, requireContext())
         sessionManager = SessionManager.getInstance(requireContext())
+
+        // Trigger background offline sync if connectivity is available
+        lifecycleScope.launch {
+            serviceRepository.syncPendingOfflineReports()
+        }
 
         val btnBack = view.findViewById<ImageView>(R.id.btnBack)
         val imgProviderAvatar = view.findViewById<ImageView>(R.id.imgProviderAvatar)
@@ -77,12 +97,17 @@ class ServiceRequestFragment : Fragment() {
         val tilDescription = view.findViewById<TextInputLayout>(R.id.tilDescription)
         val tilAddress = view.findViewById<TextInputLayout>(R.id.tilAddress)
 
+        val btnAttachPhoto = view.findViewById<MaterialButton>(R.id.btnAttachPhoto)
         val tvPriceEstimate = view.findViewById<TextView>(R.id.tvPriceEstimate)
         val tvReqError = view.findViewById<TextView>(R.id.tvReqError)
         val pbReqLoading = view.findViewById<ProgressBar>(R.id.pbReqLoading)
         val btnSubmitRequest = view.findViewById<MaterialButton>(R.id.btnSubmitRequest)
 
         btnBack?.setOnClickListener { parentFragmentManager.popBackStack() }
+
+        btnAttachPhoto?.setOnClickListener {
+            pickImageLauncher.launch("image/*")
+        }
 
         // Set default user address if logged in
         val user = sessionManager.getUser()
@@ -218,7 +243,8 @@ class ServiceRequestFragment : Fragment() {
                 address = address,
                 date = date,
                 time = time,
-                estimatedPrice = priceEst
+                estimatedPrice = priceEst,
+                imageUrl = selectedImageUriString
             )
 
             pbReqLoading?.visibility = View.VISIBLE
@@ -232,9 +258,15 @@ class ServiceRequestFragment : Fragment() {
                         btnSubmitRequest.isEnabled = true
                         val createdReq = result.data
 
+                        val alertMsg = if (createdReq.isSynced) {
+                            "Your request #${createdReq.id} for ${createdReq.serviceName} has been sent to ${createdReq.providerName}.\n\nYou will be notified when ${createdReq.providerName} accepts the job."
+                        } else {
+                            "You are currently offline. Your request #${createdReq.id} was saved locally and will automatically synchronize when connection returns."
+                        }
+
                         AlertDialog.Builder(requireContext())
-                            .setTitle("Request Submitted!")
-                            .setMessage("Your request #${createdReq.id} for ${createdReq.serviceName} has been sent to ${createdReq.providerName}.\n\nYou will be notified when ${createdReq.providerName} accepts the job.")
+                            .setTitle(if (createdReq.isSynced) "Request Submitted!" else "Saved Offline!")
+                            .setMessage(alertMsg)
                             .setPositiveButton("View My Bookings") { _, _ ->
                                 parentFragmentManager.beginTransaction()
                                     .replace(R.id.fragment_container, BookingsFragment())

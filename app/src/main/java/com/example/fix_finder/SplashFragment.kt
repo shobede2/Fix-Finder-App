@@ -22,11 +22,23 @@ class SplashFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        val logoLayout = view.findViewById<View>(R.id.layoutSplashLogo)
+        logoLayout?.alpha = 0f
+        logoLayout?.scaleX = 0.85f
+        logoLayout?.scaleY = 0.85f
+        logoLayout?.animate()
+            ?.alpha(1f)
+            ?.scaleX(1f)
+            ?.scaleY(1f)
+            ?.setDuration(800)
+            ?.start()
+
         viewLifecycleOwner.lifecycleScope.launch {
             delay(1200)
-            if (!isAdded) return@launch
+            val currentContext = context ?: return@launch
+            if (!isAdded || isRemoving) return@launch
 
-            val sessionManager = SessionManager.getInstance(requireContext())
+            val sessionManager = SessionManager.getInstance(currentContext)
             val targetFragment = if (sessionManager.isLoggedIn()) {
                 val user = sessionManager.getUser()
                 if (user?.role == User.ROLE_TECHNICIAN) DashboardFragment() else HomeFragment()
@@ -34,9 +46,11 @@ class SplashFragment : Fragment() {
                 LoginFragment()
             }
 
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, targetFragment)
-                .commitAllowingStateLoss()
+            if (isAdded && activity != null && !parentFragmentManager.isStateSaved) {
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, targetFragment)
+                    .commitAllowingStateLoss()
+            }
         }
     }
 }

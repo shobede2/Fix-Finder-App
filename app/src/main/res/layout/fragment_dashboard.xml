@@ -89,6 +89,7 @@
 
             <!-- Card 1: Today's Jobs -->
             <androidx.cardview.widget.CardView
+                android:id="@+id/cardJobs"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
@@ -141,6 +142,7 @@
 
             <!-- Card 2: Pending Requests -->
             <androidx.cardview.widget.CardView
+                android:id="@+id/cardPending"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
@@ -193,6 +195,7 @@
 
             <!-- Card 3: Monthly Earnings (Navy) -->
             <androidx.cardview.widget.CardView
+                android:id="@+id/cardEarnings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
@@ -351,7 +354,9 @@
         android:id="@+id/bottomNavigation"
         android:layout_width="match_parent"
         android:layout_height="72dp"
-        android:background="@color/white"
+        android:layout_marginHorizontal="12dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/bg_rounded_box"
         app:elevation="8dp"
         app:menu="@menu/technician_bottom_menu"
         app:itemIconTint="@color/primary_navy"

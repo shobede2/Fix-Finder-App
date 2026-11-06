@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Fix Finder</string>
+    <string name="default_web_client_id">808043273227-webclientid.apps.googleusercontent.com</string>
+    <string name="title_home">Ikhaya</string>
+    <string name="title_search">Thola Osonkontileka</string>
+    <string name="title_bookings">Izicelo Zami</string>
+    <string name="title_messages">Imiyalezo</string>
+    <string name="title_notifications">Izaziso</string>
+    <string name="title_profile">Iphrofayili</string>
+    <string name="title_settings">Izilungiselelo</string>
+    <string name="title_dashboard">Ipheshana Likalungisa</string>
+    <string name="action_back">Emuva</string>
+    <string name="action_edit">Hlela</string>
+    <string name="action_save">Gcina Izinguquko</string>
+    <string name="action_cancel">Khansela</string>
+    <string name="action_read_all">Funda Konke</string>
+    <string name="action_clear_all">Susa Konke</string>
+    <string name="action_send">Thumela</string>
+    <string name="hint_type_message">Bhala umyalezo&#8230;</string>
+    <string name="empty_notifications">Awekho Izaziso</string>
+    <string name="empty_notifications_desc">Konke kuseduze! Izaziso ezintsha zizobonakala lapha.</string>
+    <string name="empty_messages">Awekho Izingxoxo Manje</string>
+    <string name="empty_messages_desc">Qala ukuxoxa nabalungisi bendawo bezamapayipi ugesi nezinye izinkonzo.</string>
+    <string name="choose_profile_picture">Khetha Isithombe Sephrofayili</string>
+    <string name="edit_profile">Hlela Iphrofayili</string>
+    <string name="language_selection">Ulimi Olukhethiwe</string>
+    <string name="lang_english">IsiNgisi (English)</string>
+    <string name="lang_isizulu">IsiZulu</string>
+    <string name="offline_mode_banner">Imodi Engaxhunyiwe Kuntanethi - Imbiko Igcinwe eFoni</string>
+    <string name="offline_sync_success">Imbiko evumelanisiwe ngempumelelo nentandokazi!</string>
+    <string name="forgot_password">Ukhohlwe Iphasiwedi?</string>
+    <string name="reset_password">Setha Kabusha Iphasiwedi</string>
+    <string name="attach_photo">Thatha/Faka Isithombe Sanombolo</string>
+    <string name="photo_attached">Isithombe Sifakiwe ✓</string>
+    <string name="google_sign_in">Ngena nge-Google</string>
+    <string name="or_divider">NOMA</string>
+    <string name="google_sign_in_cancelled">Ukungena nge-Google kukhanseliwe.</string>
+    <string name="google_sign_in_failed">Ukungena nge-Google kwehlulekile: %1$s</string>
+    <string name="play_services_error">Izinkonzo ze-Google Play azikho noma ziphelelwe yisikhathi.</string>
+    <string name="select_role_title">Khetha Uhlobo Lwe-Akaunti</string>
+    <string name="select_role_message">Siyakwamukela! Ingabe usebenzisa i-Fix Finder ukucela izinkonzo noma ukuhlinzeka ngezinkonzo zokulungisa?</string>
+    <string name="role_customer">Ngidinga izinkonzo (Ikhastoma)</string>
+    <string name="role_technician">Ngihlinzeka ngezinkonzo (Itheknishani)</string>
+</resources>

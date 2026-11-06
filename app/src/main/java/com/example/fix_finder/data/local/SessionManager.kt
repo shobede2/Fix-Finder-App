@@ -2,9 +2,15 @@ package com.example.fix_finder.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
 import com.example.fix_finder.data.model.User
 import com.example.fix_finder.data.model.UserSettings
+import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 open class SessionManager(context: Context) {
     private val prefs: SharedPreferences =
@@ -58,7 +64,7 @@ open class SessionManager(context: Context) {
             val user = gson.fromJson(userJson, User::class.java)
             cachedUser = user
             user
-        } catch (e: Exception) {
+        } catch (_: Throwable) {
             null
         }
     }
@@ -76,7 +82,7 @@ open class SessionManager(context: Context) {
         if (json != null) {
             val settings = try {
                 gson.fromJson(json, UserSettings::class.java)
-            } catch (e: Exception) {
+            } catch (_: Throwable) {
                 UserSettings(userId = defaultUserId)
             }
             cachedSettings = settings
@@ -92,7 +98,7 @@ open class SessionManager(context: Context) {
         prefs.edit().putString(KEY_USER_SETTINGS, gson.toJson(settings)).apply()
     }
 
-    open fun logout() {
+    open fun logout(context: Context? = null) {
         cachedUser = null
         cachedSettings = null
         val editor = prefs.edit()
@@ -100,5 +106,24 @@ open class SessionManager(context: Context) {
         editor.remove(KEY_AUTH_TOKEN)
         editor.remove(KEY_USER_DATA)
         editor.apply()
+
+        // Firebase Auth Sign Out
+        try {
+            FirebaseAuth.getInstance().signOut()
+        } catch (_: Throwable) {
+            // Safe fallback if Firebase is not initialized
+        }
+
+        // Credential Manager Clear Credential State
+        context?.let { safeContext ->
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val credentialManager = CredentialManager.create(safeContext)
+                    credentialManager.clearCredentialState(ClearCredentialStateRequest())
+                } catch (_: Throwable) {
+                    // Safe fallback
+                }
+            }
+        }
     }
 }
