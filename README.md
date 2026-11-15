@@ -180,3 +180,5 @@ Automated unit tests cover key repository and business logic:
 
 - No external API keys or secrets are required to run or test the application.
 - The `MockInterceptor` ensures 100% offline functionality without needing a remote backend server online during testing or grading.
+
+Video link: https://drive.google.com/file/d/1-eJcYkJDmEWqSa1-VXcMm_IENvTVmSfa/view?usp=drivesdk
